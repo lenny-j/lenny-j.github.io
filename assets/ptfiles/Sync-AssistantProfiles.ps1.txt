@@ -1,0 +1,170 @@
+<#
+.SYNOPSIS
+    Syncs executive assistant information from a JSON file to SharePoint Online user profiles.
+
+.DESCRIPTION
+    This script reads a JSON file containing user-to-assistant mappings and updates the
+    "Assistant" property in SharePoint Online user profiles using PnP PowerShell.
+
+.PARAMETER TenantId
+    The Azure AD / Entra ID tenant ID.
+
+.PARAMETER ClientId
+    The Application (Client) ID of the service principal.
+
+.PARAMETER ClientSecret
+    The client secret for the service principal (as SecureString).
+
+.PARAMETER JsonFilePath
+    Path to the JSON file containing assistant mappings.
+    Defaults to c:\scripts\assistant_sync\assistants.json
+
+.EXAMPLE
+    $secret = Read-Host -AsSecureString -Prompt "Enter Client Secret"
+    .\Sync-AssistantProfiles.ps1 -TenantId "your-tenant-id" -ClientId "your-client-id" -ClientSecret $secret
+
+.NOTES
+    Requires PnP.PowerShell module.
+    Service principal must have SharePoint Admin permissions.
+#>
+
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory = $true)]
+    [string]$TenantId,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ClientId,
+
+    [Parameter(Mandatory = $true)]
+    [SecureString]$ClientSecret,
+
+    [Parameter(Mandatory = $false)]
+    [string]$JsonFilePath = "c:\scripts\assistant_sync\assistants.json"
+)
+
+#region Configuration
+$SharePointAdminUrl = "https://ORG-admin.sharepoint.com"
+$LogDirectory = "c:\scripts\assistant_sync\logs"
+#endregion
+
+#region Logging Functions
+function Write-Log {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Message,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet("INFO", "WARNING", "ERROR")]
+        [string]$Level = "INFO"
+    )
+
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logEntry = "[$timestamp] [$Level] $Message"
+
+    # Ensure log directory exists
+    if (-not (Test-Path -Path $LogDirectory)) {
+        New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
+    }
+
+    # Create date-based log file
+    $logFileName = "AssistantSync_$(Get-Date -Format 'yyyy-MM-dd').log"
+    $logFilePath = Join-Path -Path $LogDirectory -ChildPath $logFileName
+
+    # Write to log file
+    Add-Content -Path $logFilePath -Value $logEntry
+
+    # Also write to console
+    switch ($Level) {
+        "ERROR"   { Write-Host $logEntry -ForegroundColor Red }
+        "WARNING" { Write-Host $logEntry -ForegroundColor Yellow }
+        default   { Write-Host $logEntry }
+    }
+}
+#endregion
+
+#region Main Script
+try {
+    Write-Log -Message "========== Assistant Sync Process Started ==========" -Level "INFO"
+    Write-Log -Message "JSON File Path: $JsonFilePath" -Level "INFO"
+
+    # Validate JSON file exists
+    if (-not (Test-Path -Path $JsonFilePath)) {
+        throw "JSON file not found at path: $JsonFilePath"
+    }
+
+    # Read and parse JSON file
+    Write-Log -Message "Reading JSON file..." -Level "INFO"
+    $jsonContent = Get-Content -Path $JsonFilePath -Raw
+    $assistantMappings = $jsonContent | ConvertFrom-Json
+
+    if ($null -eq $assistantMappings -or $assistantMappings.Count -eq 0) {
+        Write-Log -Message "No assistant mappings found in JSON file. Exiting." -Level "WARNING"
+        exit 0
+    }
+
+    Write-Log -Message "Found $($assistantMappings.Count) assistant mapping(s) to process." -Level "INFO"
+
+    # Connect to SharePoint Online using PnP PowerShell
+    Write-Log -Message "Connecting to SharePoint Online Admin Center..." -Level "INFO"
+
+    $credential = New-Object System.Management.Automation.PSCredential($ClientId, $ClientSecret)
+
+    Connect-PnPOnline -Url $SharePointAdminUrl -ClientId $ClientId -ClientSecret (ConvertFrom-SecureString $ClientSecret -AsPlainText) -Tenant $TenantId
+
+    Write-Log -Message "Successfully connected to SharePoint Online." -Level "INFO"
+
+    # Process each assistant mapping
+    $successCount = 0
+    $errorCount = 0
+
+    foreach ($mapping in $assistantMappings) {
+        $userUpn = $mapping.PrimaryWorkEmail
+        $assistantUpn = $mapping.Assistant_PrimaryWorkEmail
+
+        if ([string]::IsNullOrWhiteSpace($userUpn)) {
+            Write-Log -Message "Skipping entry with empty PrimaryWorkEmail." -Level "WARNING"
+            $errorCount++
+            continue
+        }
+
+        try {
+            Write-Log -Message "Processing user: $userUpn -> Assistant: $assistantUpn" -Level "INFO"
+
+            # Build the account name format for user profile
+            $accountName = "i:0#.f|membership|$userUpn"
+
+            # Update the Assistant property in the user profile
+            Set-PnPUserProfileProperty -Account $accountName -PropertyName "Assistant" -Value $assistantUpn
+
+            Write-Log -Message "Successfully updated Assistant for $userUpn" -Level "INFO"
+            $successCount++
+        }
+        catch {
+            Write-Log -Message "Failed to update user $userUpn : $($_.Exception.Message)" -Level "ERROR"
+            $errorCount++
+        }
+    }
+
+    # Summary
+    Write-Log -Message "========== Sync Process Complete ==========" -Level "INFO"
+    Write-Log -Message "Total Processed: $($assistantMappings.Count)" -Level "INFO"
+    Write-Log -Message "Successful: $successCount" -Level "INFO"
+    Write-Log -Message "Errors: $errorCount" -Level "INFO"
+}
+catch {
+    Write-Log -Message "Critical error in sync process: $($_.Exception.Message)" -Level "ERROR"
+    Write-Log -Message "Stack Trace: $($_.ScriptStackTrace)" -Level "ERROR"
+    exit 1
+}
+finally {
+    # Disconnect from SharePoint Online
+    try {
+        Disconnect-PnPOnline -ErrorAction SilentlyContinue
+        Write-Log -Message "Disconnected from SharePoint Online." -Level "INFO"
+    }
+    catch {
+        # Ignore disconnect errors
+    }
+}
+#endregion
