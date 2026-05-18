@@ -1,0 +1,202 @@
+using System;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using System.Windows;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.Wpf;
+
+namespace Excel.AddIn.Common.Utilities.Controls
+{
+	// Token: 0x02000068 RID: 104
+	public static class WebView2Helper
+	{
+		// Token: 0x06000222 RID: 546 RVA: 0x00007304 File Offset: 0x00005504
+		public static Uri GetSource(DependencyObject obj)
+		{
+			return (Uri)obj.GetValue(WebView2Helper.SourceProperty);
+		}
+
+		// Token: 0x06000223 RID: 547 RVA: 0x00007316 File Offset: 0x00005516
+		public static void SetSource(DependencyObject obj, Uri value)
+		{
+			obj.SetValue(WebView2Helper.SourceProperty, value);
+		}
+
+		// Token: 0x06000224 RID: 548 RVA: 0x00007324 File Offset: 0x00005524
+		public static string GetSourceContent(DependencyObject obj)
+		{
+			return (string)obj.GetValue(WebView2Helper.SourceContentProperty);
+		}
+
+		// Token: 0x06000225 RID: 549 RVA: 0x00007336 File Offset: 0x00005536
+		public static void SetSourceContent(DependencyObject obj, string value)
+		{
+			obj.SetValue(WebView2Helper.SourceContentProperty, value);
+		}
+
+		// Token: 0x06000226 RID: 550 RVA: 0x00007344 File Offset: 0x00005544
+		public static bool GetIsNavigating(DependencyObject obj)
+		{
+			return (bool)obj.GetValue(WebView2Helper.IsNavigatingProperty);
+		}
+
+		// Token: 0x06000227 RID: 551 RVA: 0x00007356 File Offset: 0x00005556
+		public static void SetIsNavigating(DependencyObject obj, bool value)
+		{
+			obj.SetValue(WebView2Helper.IsNavigatingProperty, value);
+		}
+
+		// Token: 0x06000228 RID: 552 RVA: 0x0000736C File Offset: 0x0000556C
+		private static async void OnSourceChanged(object sender, DependencyPropertyChangedEventArgs e)
+		{
+			WebView2 webBrowser = sender as WebView2;
+			if (webBrowser != null)
+			{
+				if (!(bool)webBrowser.GetValue(WebView2Helper.IsSourceChangedByWebBrowserProperty))
+				{
+					WebView2 webView = webBrowser;
+					EventHandler<CoreWebView2NavigationStartingEventArgs> eventHandler;
+					if ((eventHandler = WebView2Helper.<>O.<0>__WebBrowser_Navigating) == null)
+					{
+						eventHandler = (WebView2Helper.<>O.<0>__WebBrowser_Navigating = new EventHandler<CoreWebView2NavigationStartingEventArgs>(WebView2Helper.WebBrowser_Navigating));
+					}
+					webView.NavigationStarting -= eventHandler;
+					WebView2 webView2 = webBrowser;
+					EventHandler<CoreWebView2NavigationCompletedEventArgs> eventHandler2;
+					if ((eventHandler2 = WebView2Helper.<>O.<1>__WebBrowser_Navigated) == null)
+					{
+						eventHandler2 = (WebView2Helper.<>O.<1>__WebBrowser_Navigated = new EventHandler<CoreWebView2NavigationCompletedEventArgs>(WebView2Helper.WebBrowser_Navigated));
+					}
+					webView2.NavigationCompleted -= eventHandler2;
+					WebView2 webView3 = webBrowser;
+					EventHandler<CoreWebView2NavigationCompletedEventArgs> eventHandler3;
+					if ((eventHandler3 = WebView2Helper.<>O.<1>__WebBrowser_Navigated) == null)
+					{
+						eventHandler3 = (WebView2Helper.<>O.<1>__WebBrowser_Navigated = new EventHandler<CoreWebView2NavigationCompletedEventArgs>(WebView2Helper.WebBrowser_Navigated));
+					}
+					webView3.NavigationCompleted += eventHandler3;
+					Uri uri = (Uri)e.NewValue;
+					if (uri != null)
+					{
+						await WebView2Helper.Navigate(webBrowser, uri);
+					}
+					WebView2 webView4 = webBrowser;
+					EventHandler<CoreWebView2NavigationStartingEventArgs> eventHandler4;
+					if ((eventHandler4 = WebView2Helper.<>O.<0>__WebBrowser_Navigating) == null)
+					{
+						eventHandler4 = (WebView2Helper.<>O.<0>__WebBrowser_Navigating = new EventHandler<CoreWebView2NavigationStartingEventArgs>(WebView2Helper.WebBrowser_Navigating));
+					}
+					webView4.NavigationStarting += eventHandler4;
+				}
+			}
+		}
+
+		// Token: 0x06000229 RID: 553 RVA: 0x000073AC File Offset: 0x000055AC
+		private static async void OnSourceContentChanged(object sender, DependencyPropertyChangedEventArgs e)
+		{
+			WebView2 webBrowser = sender as WebView2;
+			if (webBrowser != null)
+			{
+				if (!(bool)webBrowser.GetValue(WebView2Helper.IsSourceChangedByWebBrowserProperty))
+				{
+					WebView2 webView = webBrowser;
+					EventHandler<CoreWebView2NavigationStartingEventArgs> eventHandler;
+					if ((eventHandler = WebView2Helper.<>O.<0>__WebBrowser_Navigating) == null)
+					{
+						eventHandler = (WebView2Helper.<>O.<0>__WebBrowser_Navigating = new EventHandler<CoreWebView2NavigationStartingEventArgs>(WebView2Helper.WebBrowser_Navigating));
+					}
+					webView.NavigationStarting -= eventHandler;
+					WebView2 webView2 = webBrowser;
+					EventHandler<CoreWebView2NavigationCompletedEventArgs> eventHandler2;
+					if ((eventHandler2 = WebView2Helper.<>O.<1>__WebBrowser_Navigated) == null)
+					{
+						eventHandler2 = (WebView2Helper.<>O.<1>__WebBrowser_Navigated = new EventHandler<CoreWebView2NavigationCompletedEventArgs>(WebView2Helper.WebBrowser_Navigated));
+					}
+					webView2.NavigationCompleted -= eventHandler2;
+					WebView2 webView3 = webBrowser;
+					EventHandler<CoreWebView2NavigationCompletedEventArgs> eventHandler3;
+					if ((eventHandler3 = WebView2Helper.<>O.<1>__WebBrowser_Navigated) == null)
+					{
+						eventHandler3 = (WebView2Helper.<>O.<1>__WebBrowser_Navigated = new EventHandler<CoreWebView2NavigationCompletedEventArgs>(WebView2Helper.WebBrowser_Navigated));
+					}
+					webView3.NavigationCompleted += eventHandler3;
+					string text = (string)e.NewValue;
+					if (text != null)
+					{
+						await WebView2Helper.NavigateToString(webBrowser, text);
+					}
+					WebView2 webView4 = webBrowser;
+					EventHandler<CoreWebView2NavigationStartingEventArgs> eventHandler4;
+					if ((eventHandler4 = WebView2Helper.<>O.<0>__WebBrowser_Navigating) == null)
+					{
+						eventHandler4 = (WebView2Helper.<>O.<0>__WebBrowser_Navigating = new EventHandler<CoreWebView2NavigationStartingEventArgs>(WebView2Helper.WebBrowser_Navigating));
+					}
+					webView4.NavigationStarting += eventHandler4;
+				}
+			}
+		}
+
+		// Token: 0x0600022A RID: 554 RVA: 0x000073EC File Offset: 0x000055EC
+		private static async Task NavigateToString(WebView2 webBrowser, string sourceContent)
+		{
+			WebView2Helper.SetIsNavigating(webBrowser, true);
+			string text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "iLevel_Solutions");
+			CoreWebView2Environment coreWebView2Environment = await CoreWebView2Environment.CreateAsync(null, text, null);
+			await webBrowser.EnsureCoreWebView2Async(coreWebView2Environment);
+			webBrowser.CoreWebView2.NavigateToString(sourceContent);
+		}
+
+		// Token: 0x0600022B RID: 555 RVA: 0x00007438 File Offset: 0x00005638
+		private static async Task Navigate(WebView2 webBrowser, Uri source)
+		{
+			WebView2Helper.SetIsNavigating(webBrowser, true);
+			string text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "iLevel_Solutions");
+			CoreWebView2Environment coreWebView2Environment = await CoreWebView2Environment.CreateAsync(null, text, new CoreWebView2EnvironmentOptions(null, null, null, false)
+			{
+				AllowSingleSignOnUsingOSPrimaryAccount = source.Query.Contains("allowSsoWithOS=1")
+			});
+			await webBrowser.EnsureCoreWebView2Async(coreWebView2Environment);
+			webBrowser.CoreWebView2.Navigate(source.AbsoluteUri);
+		}
+
+		// Token: 0x0600022C RID: 556 RVA: 0x00007484 File Offset: 0x00005684
+		private static void WebBrowser_Navigating(object sender, CoreWebView2NavigationStartingEventArgs e)
+		{
+			WebView2 webView = (WebView2)sender;
+			WebView2Helper.SetIsNavigating(webView, true);
+			webView.SetValue(WebView2Helper.IsSourceChangedByWebBrowserProperty, true);
+			WebView2Helper.SetSource(webView, new Uri(e.Uri));
+			webView.SetValue(WebView2Helper.IsSourceChangedByWebBrowserProperty, false);
+		}
+
+		// Token: 0x0600022D RID: 557 RVA: 0x000074D0 File Offset: 0x000056D0
+		private static void WebBrowser_Navigated(object sender, CoreWebView2NavigationCompletedEventArgs e)
+		{
+			WebView2Helper.SetIsNavigating((WebView2)sender, false);
+		}
+
+		// Token: 0x040000BC RID: 188
+		public static readonly DependencyProperty SourceProperty = DependencyProperty.RegisterAttached("Source", typeof(Uri), typeof(WebView2Helper), new PropertyMetadata(null, new PropertyChangedCallback(WebView2Helper.OnSourceChanged)));
+
+		// Token: 0x040000BD RID: 189
+		public static readonly DependencyProperty SourceContentProperty = DependencyProperty.RegisterAttached("SourceContent", typeof(string), typeof(WebView2Helper), new PropertyMetadata(null, new PropertyChangedCallback(WebView2Helper.OnSourceContentChanged)));
+
+		// Token: 0x040000BE RID: 190
+		public static readonly DependencyProperty IsNavigatingProperty = DependencyProperty.RegisterAttached("IsNavigating", typeof(bool), typeof(WebView2Helper), new PropertyMetadata(false));
+
+		// Token: 0x040000BF RID: 191
+		private static readonly DependencyProperty IsSourceChangedByWebBrowserProperty = DependencyProperty.RegisterAttached("IsSourceChangedByWebBrowser", typeof(bool), typeof(WebView2Helper));
+
+		// Token: 0x020000D9 RID: 217
+		[CompilerGenerated]
+		private static class <>O
+		{
+			// Token: 0x040001C9 RID: 457
+			public static EventHandler<CoreWebView2NavigationStartingEventArgs> <0>__WebBrowser_Navigating;
+
+			// Token: 0x040001CA RID: 458
+			public static EventHandler<CoreWebView2NavigationCompletedEventArgs> <1>__WebBrowser_Navigated;
+		}
+	}
+}
